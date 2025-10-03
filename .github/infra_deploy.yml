@@ -1,0 +1,54 @@
+name: 1. Deploy Core Infrastructure (Terraform Only)
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target Deployment Environment'
+        required: true
+        default: 'infra-initial'
+        type: choice
+        options:
+          - infra-initial
+
+env:
+  TF_WORKING_DIR: ./infra
+
+jobs:
+  provision_infra:
+    name: Provision AWS Foundation
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: terraform init
+        working-directory: ${{ env.TF_WORKING_DIR }}
+
+      - name: Terraform Plan
+        run: terraform plan -input=false
+        working-directory: ${{ env.TF_WORKING_DIR }}
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve -input=false
+        working-directory: ${{ env.TF_WORKING_DIR }}
+
+
+      - name: Get RDS Endpoint
+        run: terraform output -raw db_endpoint
+        working-directory: ${{ env.TF_WORKING_DIR }}

@@ -1,0 +1,23 @@
+[
+  {
+    "name": "spring-boot-app-container",
+    "image": "IMAGE_URL_PLACEHOLDER",
+    "cpu": 0,
+    "memoryReservation": 1024,
+    "portMappings": [
+      {
+        "containerPort": 8080,
+        "hostPort": 8080,
+        "protocol": "tcp"
+      }
+    ],
+    "logConfiguration": {
+      "logDriver": "awslogs",
+      "options": {
+        "awslogs-group": "/ecs/spender-guardian-logs",
+        "awslogs-region": "eu-north-1",
+        "awslogs-stream-prefix": "ecs"
+      }
+    }
+  }
+]
