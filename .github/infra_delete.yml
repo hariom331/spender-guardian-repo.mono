@@ -1,0 +1,53 @@
+name: DESTROY AWS INFRASTRUCTURE
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_destroy:
+        description: 'Type "DESTROY" to confirm deletion of all resources in the infra directory.'
+        required: true
+        default: 'NO'
+
+env:
+  TF_WORKING_DIR: ./infra
+
+jobs:
+  destroy_infra:
+    name: Execute Terraform Destroy
+    runs-on: ubuntu-latest
+
+    # 1. SECURITY CHECK: Only proceed if the user types the exact confirmation word
+    if: github.event.inputs.confirm_destroy == 'DESTROY'
+
+    # CRITICAL: Permissions for OIDC (Must be able to write state for destroy/cleanup)
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          # Assumes the ARN is stored as a GitHub Secret named AWS_DEPLOY_ROLE_ARN
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      # 2. TERRAFORM INIT (Connects to S3 Backend)
+      - name: Terraform Init
+        run: terraform init
+        working-directory: ${{ env.TF_WORKING_DIR }}
+
+      # 3. TERRAFORM DESTROY (The destructive command)
+      - name: Terraform Destroy
+        run: terraform destroy -auto-approve
+        working-directory: ${{ env.TF_WORKING_DIR }}
+
+      - name: Cleanup Message
+        if: success()
+        run: echo "✅ Successfully destroyed all resources managed by Terraform."
